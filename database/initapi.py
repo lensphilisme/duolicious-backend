@@ -16,34 +16,32 @@ def create_dbs():
         password=DB_PASS,
     )
 
-  def create_db(name):
-    for _ in range(10):
-        try:
-            with psycopg.connect(_conninfo, autocommit=True) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(f"CREATE DATABASE {name}")
-            print(f'Created database: {name}')
-            break
-        except (
-            psycopg.errors.DuplicateDatabase,
-            psycopg.errors.UniqueViolation,
-        ):
-            print(f'Database already exists: {name}')
-            break
-        except psycopg.errors.OperationalError as e:
-            print(
-                'Creating database(s) failed; waiting and trying again:',
-                e
-            )
-            time.sleep(1)
-
-
-
+    def create_db(name):
+        for _ in range(10):
+            try:
+                with psycopg.connect(_conninfo, autocommit=True) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(f"CREATE DATABASE {name}")
+                print(f'Created database: {name}')
+                break
+            except (
+                psycopg.errors.DuplicateDatabase,
+                psycopg.errors.UniqueViolation,
+            ):
+                print(f'Database already exists: {name}')
+                break
+            except psycopg.errors.OperationalError as e:
+                print(
+                    'Creating database(s) failed; waiting and trying again:',
+                    e
+                )
+                time.sleep(1)
 
     create_db('duo_api')
 
+
 def init_db():
-    # Now DB_NAME exists, we do do the rest of the init.
+    # Now DB_NAME exists, we do the rest of the init.
     from service import (
         api,
         location,
@@ -63,6 +61,7 @@ def init_db():
         print(f'  * {i} of {len(init_funcs)}')
         init_func()
     print('Finished initializing api DB')
+
 
 create_dbs()
 init_db()
