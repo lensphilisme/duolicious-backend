@@ -17,25 +17,26 @@ def create_dbs():
     )
 
     def create_db(name):
-        for _ in range(10):
-            try:
-                with psycopg.connect(_conninfo, autocommit=True) as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(f"CREATE DATABASE {name}")
-                print(f'Created database: {name}')
-                break
-            except (
-                psycopg.errors.DuplicateDatabase,
-                psycopg.errors.UniqueViolation,
-            ):
-                print(f'Database already exists: {name}')
-                break
-            except psycopg.errors.OperationalError:
-                print(
-                    'Creating database(s) failed; waiting and trying again:',
-                    e
-                )
-                time.sleep(1)
+    for _ in range(10):
+        try:
+            with psycopg.connect(_conninfo, autocommit=True) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"CREATE DATABASE {name}")
+            print(f'Created database: {name}')
+            break
+        except (
+            psycopg.errors.DuplicateDatabase,
+            psycopg.errors.UniqueViolation,
+        ):
+            print(f'Database already exists: {name}')
+            break
+        except psycopg.errors.OperationalError as e:  # ✅ capture exception
+            print(
+                'Creating database(s) failed; waiting and trying again:',
+                e
+            )
+            time.sleep(1)
+
 
     create_db('duo_api')
 
