@@ -21,6 +21,8 @@ def create_dbs():
             try:
                 with psycopg.connect(_conninfo, autocommit=True) as conn:
                     with conn.cursor() as cur:
+                        # Disable statement timeout for this session
+                        cur.execute("SET statement_timeout = 0;")
                         cur.execute(f"CREATE DATABASE {name}")
                 print(f'Created database: {name}')
                 break
