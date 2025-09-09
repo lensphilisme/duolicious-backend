@@ -14,6 +14,7 @@ from antiabuse.antispam.signupemail import normalize_email
 from pydantic import ValidationError
 from functools import lru_cache
 import time
+import redis
 
 enable_mocking_file = (
     Path(__file__).parent.parent.parent /
@@ -114,8 +115,15 @@ def _get_remote_address() -> str:
     return mock_ip_address() or request.remote_addr or "127.0.0.1"
 
 CORS_ORIGINS = os.environ.get('DUO_CORS_ORIGINS', '*')
-REDIS_HOST: str = os.environ.get("DUO_REDIS_HOST", "redis")
-REDIS_PORT: int = int(os.environ.get("DUO_REDIS_PORT", 6379))
+# Use full Redis URL if set (Upstash)
+REDIS_URL = os.environ.get("DUO_REDIS_URL")  
+if REDIS_URL:
+    redis_client = redis.from_url(REDIS_URL)
+else:
+    # fallback to host/port (local Docker dev)
+    REDIS_HOST = os.environ.get("DUO_REDIS_HOST", "redis")
+    REDIS_PORT = int(os.environ.get("DUO_REDIS_PORT", 6379))
+    redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
