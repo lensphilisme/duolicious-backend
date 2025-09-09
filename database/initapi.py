@@ -1,5 +1,4 @@
 def create_dbs():
-    # All this stuff just to run `CREATE DATABASE IF NOT EXISTS DB_NAME`
     import os
     import psycopg
     import time
@@ -41,13 +40,7 @@ def create_dbs():
 
 
 def init_db():
-    # Now DB_NAME exists, we do the rest of the init.
-    from service import (
-        api,
-        location,
-        person,
-        question,
-    )
+    from service import api, location, person, question
 
     init_funcs = [
         api.init_db,
