@@ -13,6 +13,7 @@ def create_dbs():
         port=DB_PORT,
         user=DB_USER,
         password=DB_PASS,
+        dbname='postgres',
     )
 
     def create_db(name):
