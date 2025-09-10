@@ -1,6 +1,7 @@
 import constants
 from commonsql import Q_IS_ALLOWED_CLUB_NAME, Q_COMPUTED_FLAIR
-from utils import compute_personality_vectors, answer_score_vectors
+from service.api.utils import compute_personality_vectors, answer_score_vectors
+
 
 MAX_CLUB_SEARCH_RESULTS = 20
 
