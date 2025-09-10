@@ -122,6 +122,7 @@ def maybe_run_init():
         init_sql_file = f.read()
 
     with api_tx() as tx:
+        tx.execute("SET statement_timeout = 0;")
         tx.execute(init_sql_file)
 
 def init_db():
