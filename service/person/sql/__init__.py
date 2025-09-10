@@ -1,5 +1,6 @@
 import constants
 from commonsql import Q_IS_ALLOWED_CLUB_NAME, Q_COMPUTED_FLAIR
+from utils import compute_personality_vectors, answer_score_vectors
 
 MAX_CLUB_SEARCH_RESULTS = 20
 
@@ -31,75 +32,89 @@ _Q_ESTIMATED_END_DATE = """
 (SELECT iso8601_utc(estimated_end_date) FROM funding) AS estimated_end_date
 """
 
-Q_UPDATE_ANSWER = """
-WITH
-old_answer AS (
-    SELECT question_id, answer
-    FROM answer
-    WHERE
-        person_id = %(person_id)s AND
-        question_id = COALESCE(
-            %(question_id_to_insert)s,
-            %(question_id_to_delete)s
+# -------------------------
+# Python-based update_answer
+# -------------------------
+def update_answer(cur, person_id, question_id_to_insert=None, question_id_to_delete=None, answer=None, public=None):
+    """
+    Handles answer insertion/deletion and updates personality vectors in Python.
+    Also computes MODEV (most dominant trait/value) after update.
+    """
+    # 1️⃣ Fetch old answer
+    cur.execute("""
+        SELECT question_id, answer
+        FROM answer
+        WHERE person_id = %s AND question_id = COALESCE(%s, %s)
+    """, (person_id, question_id_to_insert, question_id_to_delete))
+    old_answer = cur.fetchone()
+
+    # 2️⃣ Delete old answer if needed
+    if question_id_to_delete:
+        cur.execute(
+            "DELETE FROM answer WHERE person_id = %s AND question_id = %s",
+            (person_id, question_id_to_delete)
         )
-), deleted_answer AS (
-    DELETE FROM answer
-    WHERE
-        person_id = %(person_id)s AND
-        question_id = %(question_id_to_delete)s
-), new_answer AS (
-    INSERT INTO answer (
-        person_id,
-        question_id,
-        answer,
-        public_
-    )
-    SELECT
-        %(person_id)s,
-        %(question_id_to_insert)s,
-        %(answer)s,
-        %(public)s
-    WHERE %(question_id_to_insert)s::SMALLINT IS NOT NULL
-    ON CONFLICT (person_id, question_id) DO UPDATE SET
-        answer  = EXCLUDED.answer,
-        public_ = EXCLUDED.public_
-    RETURNING
-        question_id,
-        answer
-), updated_personality_vectors AS (
-    SELECT
-        (compute_personality_vectors(
-            new_vectors.presence_score,
-            new_vectors.absence_score,
-            old_vectors.presence_score,
-            old_vectors.absence_score,
-            cur_vectors.presence_score,
-            cur_vectors.absence_score,
-            cur_vectors.count_answers
-        )).*
-    FROM (
-        SELECT (answer_score_vectors(question_id, answer)).*
-        FROM new_answer
-        LIMIT 1
-    ) AS new_vectors FULL OUTER JOIN (
-        SELECT (answer_score_vectors(question_id, answer)).*
-        FROM old_answer
-        LIMIT 1
-    ) AS old_vectors ON TRUE FULL OUTER JOIN (
+
+    # 3️⃣ Insert/update new answer
+    if question_id_to_insert:
+        cur.execute("""
+            INSERT INTO answer (person_id, question_id, answer, public_)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (person_id, question_id) DO UPDATE
+            SET answer = EXCLUDED.answer,
+                public_ = EXCLUDED.public_
+            RETURNING question_id, answer
+        """, (person_id, question_id_to_insert, answer, public))
+        new_answer = cur.fetchone()
+    else:
+        new_answer = None
+
+    # 4️⃣ Fetch current person vectors
+    cur.execute("""
         SELECT presence_score, absence_score, count_answers
-        FROM person where id = %(person_id)s
-        LIMIT 1
-    ) AS cur_vectors ON TRUE
-)
-UPDATE person
-SET
-    personality    = updated_personality_vectors.personality,
-    presence_score = updated_personality_vectors.presence_score,
-    absence_score  = updated_personality_vectors.absence_score,
-    count_answers  = updated_personality_vectors.count_answers
-FROM updated_personality_vectors
-WHERE person.id = %(person_id)s
-"""
+        FROM person
+        WHERE id = %s
+    """, (person_id,))
+    cur_vectors = cur.fetchone()
+
+    # 5️⃣ Compute new personality vectors
+    new_vectors = answer_score_vectors(new_answer['question_id'], new_answer['answer']) if new_answer else None
+    old_vectors = answer_score_vectors(old_answer['question_id'], old_answer['answer']) if old_answer else None
+
+    personality, presence_score, absence_score, count_answers = compute_personality_vectors(
+        new_presence_score=new_vectors['presence_score'] if new_vectors else None,
+        new_absence_score=new_vectors['absence_score'] if new_vectors else None,
+        old_presence_score=old_vectors['presence_score'] if old_vectors else None,
+        old_absence_score=old_vectors['absence_score'] if old_vectors else None,
+        cur_presence_score=cur_vectors['presence_score'],
+        cur_absence_score=cur_vectors['absence_score'],
+        cur_count_answers=cur_vectors['count_answers'],
+    )
+
+    # 6️⃣ Compute MODEV (most dominant trait/value)
+    modev_index = max(range(len(personality)), key=lambda i: abs(personality[i]))
+    modev_value = personality[modev_index]
+
+    # 7️⃣ Update person table
+    cur.execute("""
+        UPDATE person
+        SET personality = %s,
+            presence_score = %s,
+            absence_score = %s,
+            count_answers = %s,
+            modev_index = %s,
+            modev_value = %s
+        WHERE id = %s
+    """, (
+        personality,
+        presence_score,
+        absence_score,
+        count_answers,
+        modev_index,
+        modev_value,
+        person_id
+    ))
+
 
 Q_ADD_YES_NO_COUNT = """
 UPDATE question
