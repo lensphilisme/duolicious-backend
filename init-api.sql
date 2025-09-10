@@ -16,17 +16,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE OR REPLACE FUNCTION array_full(dimensions INT, fill_value FLOAT4)
 RETURNS FLOAT4[] AS $$
     SELECT ARRAY(SELECT fill_value FROM generate_series(1, dimensions));
-$$ LANGUAGE sql IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE sql IMMUTABLE  PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION array_full(dimensions INT, fill_value INT)
 RETURNS INT[] AS $$
     SELECT ARRAY(SELECT fill_value FROM generate_series(1, dimensions));
-$$ LANGUAGE sql IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE sql IMMUTABLE  PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION clamp(lo FLOAT, hi FLOAT, val FLOAT)
 RETURNS FLOAT AS $$
     SELECT LEAST(hi, GREATEST(lo, val));
-$$ LANGUAGE sql IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE sql IMMUTABLE  PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION base62_encode(num bigint) RETURNS text AS $$
 DECLARE
@@ -1361,7 +1361,7 @@ RETURNS answer_score_vectors AS $$
         END AS absence_score
     FROM question
     WHERE id = question_id
-$$ LANGUAGE sql IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE sql IMMUTABLE  PARALLEL SAFE;
 
 
 DROP TYPE IF EXISTS personality_vectors CASCADE;
@@ -1427,7 +1427,7 @@ RETURNS personality_vectors AS $$
         absence_score,
         count_answers,
     )
-$$ LANGUAGE plpython3u IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE plpython3u IMMUTABLE  PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION trait_ratio(
     presence_score INT[],
@@ -1443,7 +1443,7 @@ RETURNS TABLE(trait_id SMALLINT, ratio FLOAT4) AS $$
             ELSE NULL
         END AS percentage
     FROM UNNEST(presence_score, absence_score) as t(a, b);
-$$ LANGUAGE sql IMMUTABLE LEAKPROOF PARALLEL SAFE;
+$$ LANGUAGE sql IMMUTABLE  PARALLEL SAFE;
 
 --------------------------------------------------------------------------------
 -- TRIGGER - refresh_has_profile_picture_id
