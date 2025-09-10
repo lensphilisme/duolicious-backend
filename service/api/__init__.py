@@ -67,7 +67,7 @@ def migrate_unnormalized_emails():
     with api_tx() as tx:
         print('Selecting emails')
         q = "SELECT email FROM person"
-        tx.execute('SET LOCAL statement_timeout = 300000') # 5 minutes
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         rows = tx.execute(q).fetchall()
         print('Done selecting emails')
 
@@ -85,7 +85,7 @@ def migrate_unnormalized_emails():
         WHERE email = %(email)s
         """
         print('Updating normalized emails in `person` table')
-        tx.execute('SET LOCAL statement_timeout = 300000') # 5 minutes
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         tx.executemany(q, params_seq)
         print('Done updating normalized emails in `person` table')
 
@@ -122,7 +122,7 @@ def maybe_run_init():
         init_sql_file = f.read()
 
     with api_tx() as tx:
-        tx.execute("SET statement_timeout = 0;")
+        tx.execute("SET LOCAL statement_timeout = 0;")
         tx.execute(init_sql_file)
 
 def init_db():
@@ -141,17 +141,19 @@ def init_db():
     maybe_run_init()
 
     with api_tx() as tx:
-        tx.execute('SET LOCAL statement_timeout = 300000') # 5 minutes
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         tx.execute(migrations_sql_file)
 
     with api_tx() as tx:
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         tx.execute(email_domains_bad_file)
 
     with api_tx() as tx:
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         tx.execute(email_domains_good_file)
 
     with api_tx() as tx:
-        tx.execute('SET LOCAL statement_timeout = 300000') # 5 minutes
+        tx.execute('SET LOCAL statement_timeout = 600000') # 5 minutes
         tx.execute(banned_club_file)
 
     migrate_unnormalized_emails()
